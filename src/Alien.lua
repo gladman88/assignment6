@@ -30,6 +30,12 @@ function Alien:init(world, type, x, y, userData)
     self.fixture = love.physics.newFixture(self.body, self.shape)
 
     self.fixture:setUserData(userData)
+    
+    if userData == "Player" then
+    	self.fixture:setCategory(2)
+    	self.fixture:setRestitution(0.4)
+        self.body:setAngularDamping(1)
+    end
 
     -- used to keep track of despawning the Alien and flinging it
     self.launched = false

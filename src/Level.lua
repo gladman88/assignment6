@@ -16,6 +16,8 @@ function Level:init()
     -- bodies we will destroy after the world update cycle; destroying these in the
     -- actual collision callbacks can cause stack overflow and other errors
     self.destroyedBodies = {}
+    
+    self.wasContact = false
 
     -- define collision callbacks for our world; the World object expects four,
     -- one for different stages of any given collision
@@ -23,6 +25,10 @@ function Level:init()
         local types = {}
         types[a:getUserData()] = true
         types[b:getUserData()] = true
+        
+        if types['Player'] then
+        	self.wasContact = true
+		end
 
         -- if we collided between both an alien and an obstacle...
         if types['Obstacle'] and types['Player'] then
@@ -182,21 +188,53 @@ function Level:update(dt)
         end
     end
 
-    -- replace launch marker if original alien stopped moving
+    
     if self.launchMarker.launched then
-        local xPos, yPos = self.launchMarker.alien.body:getPosition()
-        local xVel, yVel = self.launchMarker.alien.body:getLinearVelocity()
-        
-        -- if we fired our alien to the left or it's almost done rolling, respawn
-        if xPos < 0 or (math.abs(xVel) + math.abs(yVel) < 1.5) then
-            self.launchMarker.alien.body:destroy()
-            self.launchMarker = AlienLaunchMarker(self.world)
+    	-- make three aliens in case Space was pressed
+    	if love.keyboard.wasPressed("space") and #self.launchMarker.aliens == 1 and not self.wasContact then 
+    		-- get xPos, yPos of main alien-player
+    		local xPos, yPos = self.launchMarker.aliens[1].body:getPosition()
+			local xVel, yVel = self.launchMarker.aliens[1].body:getLinearVelocity()
+			
+    		topAlien = Alien(self.world, 'round', xPos, yPos, 'Player')
+    		bottomAlien = Alien(self.world, 'round', xPos, yPos, 'Player')
+			
+			topAlien.body:setLinearVelocity(xVel + 30, yVel - 100)
+			bottomAlien.body:setLinearVelocity(xVel - 30, yVel + 100)
+			
+    		topAlien.fixture:setMask(2)
+    		bottomAlien.fixture:setMask(2)
+    		
+    		Timer.after(0.3,function()
+    			topAlien.fixture:setMask()
+    			bottomAlien.fixture:setMask()
+    		end)
+    		
+    		table.insert(self.launchMarker.aliens, topAlien)
+    		table.insert(self.launchMarker.aliens, bottomAlien)
+    	end
+    	
+    	for k, alien in pairs(self.launchMarker.aliens) do
+			-- replace launch marker if original alien stopped moving
+			local xPos, yPos = alien.body:getPosition()
+			local xVel, yVel = alien.body:getLinearVelocity()
+		
+			-- if we fired our alien to the left or it's almost done rolling, respawn
+			if xPos < 0 or xPos > VIRTUAL_WIDTH * 2 - 35 or (math.abs(xVel) + math.abs(yVel) < 3.5) then
+				alien.body:destroy()
+				table.remove(self.launchMarker.aliens, k)
+			end
+			
+			if #self.launchMarker.aliens == 0 then
+				self.launchMarker = AlienLaunchMarker(self.world)
+				self.wasContact = false
 
-            -- re-initialize level if we have no more aliens
-            if #self.aliens == 0 then
-                gStateMachine:change('start')
-            end
-        end
+				-- re-initialize level if we have no more aliens
+				if #self.aliens == 0 then
+					gStateMachine:change('start')
+				end
+			end
+		end
     end
 end
 

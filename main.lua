@@ -84,6 +84,7 @@ function love.mouse.wasReleased(key)
 end
 
 function love.update(dt)
+    Timer.update(dt)
     if not paused then
         gStateMachine:update(dt)
 
@@ -97,4 +98,12 @@ function love.draw()
     push:start()
     gStateMachine:render()
     push:finish()
+end
+
+function addToLog(text,woLineBreak)
+	if not woLineBreak then
+    	love.filesystem.append('logs.txt', "\n"..text)
+    else
+    	love.filesystem.append('logs.txt', " "..text)
+    end
 end
